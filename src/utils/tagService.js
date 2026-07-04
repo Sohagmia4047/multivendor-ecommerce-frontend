@@ -1,6 +1,6 @@
 import api from "../utils/axiosInstance";
 
-const API_URL = "http://127.0.0.1:8000/core/tags/";
+const API_URL = `${import.meta.env.VITE_BASE_URL}/core/tags/`;
 
 // 🔹 Get all tags
 const getAllTags = async () => {

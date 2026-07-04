@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000",
+  baseURL: import.meta.env.VITE_BASE_URL,
 });
 
 api.interceptors.request.use((config) => {
@@ -36,7 +36,7 @@ api.interceptors.response.use(
         }
 
         const response = await axios.post(
-          "http://127.0.0.1:8000/user/token/refresh/",
+          `${import.meta.env.VITE_BASE_URL}/user/token/refresh/`,
           {
             refresh,
           }

@@ -1,6 +1,6 @@
 import api from "../utils/axiosInstance";
 
-const API_URL = "http://127.0.0.1:8000/core/products/";
+const API_URL = `${import.meta.env.VITE_BASE_URL}/core/products/`;
 
 // 🔹 Get all products
 const getAllProducts = async () => {
