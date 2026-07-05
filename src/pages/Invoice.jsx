@@ -23,8 +23,12 @@ const Invoice = () => {
   const fetchInvoice = async () => {
     try {
       const data = await invoiceService.getInvoice(invoiceNo);
+      console.log("Invoice Data:", data);
       setInvoice(data);
     } catch (err) {
+      console.log("Status:", err.response?.status);
+      console.log("Data:", err.response?.data);
+      console.log("Full Error:", err);
       setError("Invoice not found");
     } finally {
       setLoading(false);
