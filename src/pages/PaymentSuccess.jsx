@@ -18,11 +18,11 @@ const PaymentSuccess = () => {
   useEffect(() => {
     if (!invoiceNo) return;
 
-    const timer = setTimeout(() => {
-      navigate(`/invoice/${invoiceNo}`);
-    }, 3000);
+    // const timer = setTimeout(() => {
+    //   navigate(`/invoice/${invoiceNo}`);
+    // }, 3000);
 
-    return () => clearTimeout(timer);
+    // return () => clearTimeout(timer);
   }, [invoiceNo, navigate]);
 
   return (
