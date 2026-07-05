@@ -8,6 +8,7 @@ import { FaCheckCircle } from "react-icons/fa";
 import PublicLayout from "../components/PublicLayout";
 
 const PaymentSuccess = () => {
+  console.log("PaymentSuccess Loaded");
   const navigate = useNavigate();
 
   const [searchParams] = useSearchParams();
