@@ -1,146 +1,194 @@
-import React, { useEffect, useState, useRef } from "react";
-import { FaHeart, FaExchangeAlt, FaSearch, FaStar } from "react-icons/fa";
+import React, { useMemo } from "react";
+import {
+  FaExchangeAlt,
+  FaHeart,
+  FaSearch,
+  FaShoppingCart,
+  FaStar,
+} from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../hooks/useCart";
 
+const formatPrice = (value) => {
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) {
+    return "0.00";
+  }
+
+  return amount.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+};
+
 const SingleProductCard = ({ product }) => {
   const navigate = useNavigate();
-
-  // per product rating (safe fallback)
-  const reviews = product?.reviews || [];
   const { addToCartGlobal } = useCart();
 
-  const avgRating =
-    reviews.length > 0
-      ? (
-          reviews.reduce((sum, item) => sum + item.rating, 0) / reviews.length
-        ).toFixed(1)
-      : 0;
+  const averageRating = useMemo(() => {
+    const reviews = Array.isArray(product?.reviews) ? product.reviews : [];
 
-  const ProductTitle = ({ title }) => {
-    const titleRef = useRef(null);
-    const [isTruncated, setIsTruncated] = useState(false);
+    if (reviews.length === 0) {
+      return 0;
+    }
 
-    useEffect(() => {
-      if (titleRef.current) {
-        setIsTruncated(
-          titleRef.current.scrollWidth > titleRef.current.clientWidth,
-        );
-      }
-    }, [title]);
-
-    return (
-      <div className="relative group">
-        <h2
-          ref={titleRef}
-          className="font-semibold text-sm leading-4 mb-2 truncate hover:text-green-500 transition cursor-pointer w-full"
-        >
-          {title}
-        </h2>
-
-        {isTruncated && (
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-full py-1 -mb-10 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50 w-full">
-            <div className="bg-gray-900 text-white text-sm rounded-lg px-2 py-1 shadow-xl w-full max-w-full wrap-break-words">
-              {title}
-            </div>
-
-            <div className="w-2 h-2 bg-gray-900 rotate-45 mx-auto -mt-1"></div>
-          </div>
-        )}
-      </div>
+    const total = reviews.reduce(
+      (sum, review) => sum + Number(review?.rating || 0),
+      0,
     );
+
+    return Number((total / reviews.length).toFixed(1));
+  }, [product?.reviews]);
+
+  const reviewCount = Array.isArray(product?.reviews)
+    ? product.reviews.length
+    : 0;
+
+  const openProduct = () => {
+    if (product?.id) {
+      navigate(`/product-detail/${product.id}`);
+    }
+  };
+
+  const stopCardNavigation = (event) => {
+    event.stopPropagation();
+  };
+
+  const handleAddToCart = (event) => {
+    event.stopPropagation();
+
+    if (product?.id) {
+      addToCartGlobal(product.id, 1);
+    }
   };
 
   return (
-    <div
-      onClick={() => navigate(`/product-detail/${product.id}`)}
-      className="border rounded-3xl p-2 hover:shadow-xl transition duration-300 group relative bg-white h-fit cursor-pointer"
+    <article
+      onClick={openProduct}
+      className="group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-md border border-gray-100 bg-white p-1.5 transition duration-200 hover:-translate-y-0.5 hover:border-gray-200 hover:shadow-md sm:p-2"
     >
-      {/* Discount */}
-      {product.discount > 0 && (
-        <span className="absolute top-3 left-3 bg-red-400 text-white z-10 text-xs px-3 py-1 rounded-full">
+      {/* Discount badge */}
+      {Number(product?.discount) > 0 && (
+        <span className="absolute left-1.5 top-1.5 z-20 rounded-sm bg-orange-500 px-1.5 py-0.5 text-[8px] font-semibold leading-4 text-white sm:left-2 sm:top-2 sm:text-[9px]">
           -{product.discount}%
         </span>
       )}
 
-      {/* Action buttons */}
-      <div className="absolute top-30 right-10 flex gap-2 opacity-0 group-hover:opacity-100 transition z-20">
-        <button className="w-8 h-8 rounded-full bg-white shadow flex items-center justify-center hover:bg-green-500 hover:text-white">
-          <FaHeart />
-        </button>
+      {/* Wishlist */}
+      <button
+        type="button"
+        aria-label="Add to wishlist"
+        onClick={stopCardNavigation}
+        className="absolute right-1.5 top-1.5 z-20 grid h-6 w-6 place-items-center rounded-full bg-white/95 text-[10px] text-gray-500 shadow-sm transition hover:bg-green-500 hover:text-white sm:right-2 sm:top-2 sm:h-7 sm:w-7 sm:text-xs"
+      >
+        <FaHeart />
+      </button>
 
-        <button className="w-8 h-8 rounded-full bg-white shadow flex items-center justify-center hover:bg-green-500 hover:text-white">
+      {/* Desktop hover actions */}
+      <div className="pointer-events-none absolute right-2 top-9 z-20 hidden flex-col gap-1 opacity-0 transition duration-200 group-hover:opacity-100 md:flex">
+        <button
+          type="button"
+          aria-label="Compare product"
+          onClick={stopCardNavigation}
+          className="pointer-events-auto grid h-6 w-6 place-items-center rounded-full bg-white text-[9px] text-gray-500 shadow-sm transition hover:bg-green-500 hover:text-white"
+        >
           <FaExchangeAlt />
         </button>
 
-        <button className="w-8 h-8 rounded-full bg-white shadow flex items-center justify-center hover:bg-green-500 hover:text-white">
+        <button
+          type="button"
+          aria-label="Quick view"
+          onClick={stopCardNavigation}
+          className="pointer-events-auto grid h-6 w-6 place-items-center rounded-full bg-white text-[9px] text-gray-500 shadow-sm transition hover:bg-green-500 hover:text-white"
+        >
           <FaSearch />
         </button>
       </div>
 
-      {/* Image */}
-      <div className="flex items-center justify-center h-40">
+      {/* Compact image area: height is about 70% of previous square area */}
+      <div className="flex aspect-[10/7] w-full items-center justify-center overflow-hidden rounded bg-white p-1 sm:p-1.5">
         <img
-          src={product.image}
-          alt={product.title}
-          className="h-32 object-contain group-hover:scale-105 transition duration-300"
+          src={product?.image}
+          alt={product?.title || "Product"}
+          loading="lazy"
+          className="h-full w-full object-contain transition duration-300 group-hover:scale-105"
         />
       </div>
 
-      {/* Category */}
-      <p className="text-[11px] text-gray-400 mb-0.5">
-        {product.category?.title}
-      </p>
+      {/* Product content */}
+      <div className="flex min-w-0 flex-1 flex-col pt-1.5">
+        {/* Category */}
+        <p className="mb-0.5 truncate text-[8px] leading-3 text-gray-400 sm:text-[9px]">
+          {product?.category?.title || "Uncategorized"}
+        </p>
 
-      {/* Title */}
-      <ProductTitle title={product.title} />
+        {/* Title */}
+        <h3
+          title={product?.title}
+          className="min-h-[28px] overflow-hidden text-[10px] font-medium leading-[14px] text-gray-800 transition group-hover:text-green-600 sm:min-h-[30px] sm:text-[11px] sm:leading-[15px] lg:text-xs"
+          style={{
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+          }}
+        >
+          {product?.title || "Untitled product"}
+        </h3>
 
-      {/* Rating */}
-      <div className="flex items-center gap-1 text-xs mb-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <FaStar
-            key={star}
-            className={
-              star <= Math.round(avgRating)
-                ? "text-yellow-400"
-                : "text-gray-300"
-            }
-          />
-        ))}
+        {/* Rating */}
+        <div className="mt-0.5 flex min-w-0 items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-px">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <FaStar
+                key={star}
+                className={`text-[7px] sm:text-[8px] ${
+                  star <= Math.round(averageRating)
+                    ? "text-yellow-400"
+                    : "text-gray-200"
+                }`}
+              />
+            ))}
+          </div>
 
-        <span className="text-gray-500 text-[11px] ml-1">({avgRating})</span>
-      </div>
-
-      {/* Vendor */}
-      <p className="text-[11px] text-gray-400 mb-0.5">
-        By {product.vendor?.title}
-      </p>
-
-      {/* Price */}
-      <div className="flex items-center justify-between mt-2">
-        <div className="flex flex-col">
-          <span className="text-green-500 font-bold text-base">
-            ${product.price}
+          <span className="truncate text-[8px] text-gray-400 sm:text-[9px]">
+            ({reviewCount})
           </span>
-
-          {product.old_price && (
-            <span className="text-gray-400 line-through text-xs">
-              ${product.old_price}
-            </span>
-          )}
         </div>
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation(); // card click prevent
-            addToCartGlobal(product.id, 1);
-          }}
-          className="bg-green-100 hover:bg-green-500 hover:text-white transition px-3 py-2 rounded-lg text-xs font-medium text-green-600"
-        >
-          Add to Cart
-        </button>
+        {/* Vendor */}
+        <p className="mt-0.5 truncate text-[8px] leading-3 text-gray-400 sm:text-[9px]">
+          By{" "}
+          <span className="text-green-600">
+            {product?.vendor?.title || "Unknown seller"}
+          </span>
+        </p>
+
+        {/* Price and cart button */}
+        <div className="mt-auto pt-1.5">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0">
+            <span className="truncate text-xs font-bold text-orange-500 sm:text-sm">
+              ${formatPrice(product?.price)}
+            </span>
+
+            {product?.old_price && (
+              <span className="truncate text-[8px] text-gray-400 line-through sm:text-[9px]">
+                ${formatPrice(product.old_price)}
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            className="mt-1.5 inline-flex min-h-7 w-full items-center justify-center gap-1 rounded bg-green-50 px-1.5 py-1 text-[9px] font-semibold leading-4 text-green-600 transition hover:bg-green-500 hover:text-white active:scale-[0.99] sm:min-h-8 sm:text-[10px]"
+          >
+            <FaShoppingCart className="shrink-0 text-[9px]" />
+            <span className="truncate">Add to cart</span>
+          </button>
+        </div>
       </div>
-    </div>
+    </article>
   );
 };
 

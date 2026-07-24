@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   FaBars,
   FaChevronDown,
@@ -11,33 +11,75 @@ import {
   FaUser,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
-import categoryService from "../utils/categoryService";
-// import vendorService from "../utils/vendorService";
-import { NavLink, useNavigate } from "react-router-dom";
-import { useCart } from "../hooks/useCart";
-import {
-  FaCheese,
-  FaTshirt,
-  FaBone,
-  FaCoffee,
-  FaBreadSlice,
-  FaAppleAlt,
-} from "react-icons/fa";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+
 import logo from "../assets/logo.jpg";
+import { useCart } from "../hooks/useCart";
+import categoryService from "../utils/categoryService";
 
 const PublicLayout = ({ children }) => {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [showCategory, setShowCategory] = useState(false);
   const [categories, setCategories] = useState([]);
-  // const [vendors, setVendors] = useState([]);
   const [search, setSearch] = useState("");
   const [accountMenu, setAccountMenu] = useState(false);
-  const navigate = useNavigate();
-  const accountRef = useRef(null);
   const [stickyHeader, setStickyHeader] = useState(false);
+  const [mobileSections, setMobileSections] = useState({
+    categories: false,
+    home: false,
+    vendors: false,
+    megaMenu: false,
+    account: false,
+  });
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const accountRef = useRef(null);
   const { cartCount, setCartCount, toggleCart, clearCart } = useCart();
+
+  const closeMobileMenu = () => {
+    setMobileMenu(false);
+    setMobileSections({
+      categories: false,
+      home: false,
+      vendors: false,
+      megaMenu: false,
+      account: false,
+    });
+  };
+
+  const toggleMobileSection = (section) => {
+    setMobileSections((previousSections) => ({
+      ...previousSections,
+      [section]: !previousSections[section],
+    }));
+  };
+
+  const goToPage = (path) => {
+    closeMobileMenu();
+    navigate(path);
+  };
+
   const handleSearch = () => {
-    navigate(`/?search=${encodeURIComponent(search)}`);
+    const query = search.trim();
+
+    if (query) {
+      navigate(`/?search=${encodeURIComponent(query)}`);
+    } else {
+      navigate("/");
+    }
+
+    closeMobileMenu();
+  };
+
+  const handleLogout = () => {
+    clearCart();
+    localStorage.clear();
+    setCartCount(0);
+    setAccountMenu(false);
+    closeMobileMenu();
+    toast.success("Logged out successfully");
+    navigate("/login");
   };
 
   useEffect(() => {
@@ -48,6 +90,7 @@ const PublicLayout = ({ children }) => {
     };
 
     document.addEventListener("mousedown", handleClickOutside);
+
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
@@ -57,27 +100,15 @@ const PublicLayout = ({ children }) => {
     const fetchCategories = async () => {
       try {
         const data = await categoryService.getAllCategories();
-        setCategories(data);
+        setCategories(Array.isArray(data) ? data : []);
       } catch (error) {
-        console.log(error);
+        console.error("Unable to load categories:", error);
+        setCategories([]);
       }
     };
 
     fetchCategories();
   }, []);
-
-  // useEffect(() => {
-  //   const fetchVendors = async () => {
-  //     try {
-  //       const data = await vendorService.getAllVendors();
-  //       // setVendors(data);
-  //     } catch (error) {
-  //       console.log(error);
-  //     }
-  //   };
-
-  //   fetchVendors();
-  // }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -85,493 +116,1131 @@ const PublicLayout = ({ children }) => {
       setStickyHeader(window.scrollY > triggerPoint);
     };
 
-    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
-  const handleLogout = () => {
-    clearCart();
-    localStorage.clear();
-    setCartCount(0);
-    toast.success("Logged out successfully");
-    navigate("/login");
-  };
+  useEffect(() => {
+    closeMobileMenu();
+    setAccountMenu(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileMenu ? "hidden" : "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenu]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        closeMobileMenu();
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   return (
-    <div className="w-full overflow-visible bg-white text-gray-700">
+    <div className="min-h-screen w-full bg-white text-gray-700">
       {/* TOP HEADER */}
-      <div className="hidden xl:flex items-center justify-between border-b px-6 2xl:px-12 py-2 text-xs">
-        <div className="flex items-center gap-5">
-          <p className="hover:text-green-500 cursor-pointer transition">
-            About Us
+      <div className="hidden border-b xl:block">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-6 px-6 py-2 text-xs 2xl:px-12">
+          <div className="flex items-center gap-5 whitespace-nowrap">
+            <button
+              type="button"
+              className="cursor-pointer transition hover:text-green-500"
+            >
+              About Us
+            </button>
+
+            <button
+              type="button"
+              className="cursor-pointer transition hover:text-green-500"
+            >
+              My Account
+            </button>
+
+            <button
+              type="button"
+              className="cursor-pointer transition hover:text-green-500"
+            >
+              Wishlist
+            </button>
+
+            <NavLink
+              to="/dashboard/orders/track-all"
+              className="cursor-pointer transition hover:text-green-500"
+            >
+              Order Tracking
+            </NavLink>
+          </div>
+
+          <p className="min-w-0 text-center text-gray-500">
+            100% Secure delivery without contacting the courier
           </p>
 
-          <p className="hover:text-green-500 cursor-pointer transition">
-            My Account
-          </p>
+          <div className="flex items-center gap-5 whitespace-nowrap">
+            <p>
+              Need help?{" "}
+              <span className="font-bold text-green-500">+1800 900</span>
+            </p>
 
-          <p className="hover:text-green-500 cursor-pointer transition">
-            Wishlist
-          </p>
+            <button
+              type="button"
+              className="cursor-pointer hover:text-green-500"
+            >
+              English
+            </button>
 
-          <NavLink to="/dashboard/orders/track-all" className="hover:text-green-500 cursor-pointer transition">
-            Order Tracking
-          </NavLink> 
-        </div>
-
-        <p className="text-gray-500 text-center">
-          100% Secure delivery without contacting the courier
-        </p>
-
-        <div className="flex items-center gap-5">
-          <p>
-            Need help?{" "}
-            <span className="text-green-500 font-bold">+1800 900</span>
-          </p>
-
-          <p className="cursor-pointer hover:text-green-500">English</p>
-
-          <p className="cursor-pointer hover:text-green-500">USD</p>
+            <button
+              type="button"
+              className="cursor-pointer hover:text-green-500"
+            >
+              USD
+            </button>
+          </div>
         </div>
       </div>
 
       {/* MAIN HEADER */}
-      <div className="border-b">
-        <div className="flex items-center justify-between gap-3 px-4 md:px-6 2xl:px-12 py-3">
-          {/* LOGO */}
-          <div className="flex items-center shrink-0">
-            <img
-              src={logo}
-              alt="logo"
-              className="h-10 sm:h-12 md:h-14 w-auto object-contain"
-            />
-          </div>
-
-          {/* SEARCH */}
-          <div className="hidden lg:flex flex-1 mx-4 border border-green-500 rounded overflow-hidden max-w-2xl">
-            <input
-              type="text"
-              value={search}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSearch();
-                }
-              }}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search for items..."
-              className="w-full px-4 py-3 outline-none text-sm"
-            />
-
+      <header className="border-b bg-white">
+        <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-5 md:px-6 2xl:px-12">
+          <div className="flex items-center justify-between gap-3">
+            {/* LOGO */}
             <button
-              onClick={handleSearch}
-              className="bg-green-500 hover:bg-green-600 transition px-5 text-white"
+              type="button"
+              onClick={() => navigate("/")}
+              className="flex shrink-0 items-center"
+              aria-label="Go to home page"
             >
-              <FaSearch />
+              <img
+                src={logo}
+                alt="Nest logo"
+                className="h-10 w-auto max-w-[150px] object-contain sm:h-12 md:h-14"
+              />
             </button>
-          </div>
 
-          {/* RIGHT ICONS (DESKTOP/TABLET) */}
-          {/* RIGHT ICONS */}
-          <div className="hidden md:flex items-center gap-6">
-            {/* COMPARE */}
-            <div className="relative cursor-pointer flex items-center gap-2">
-              <div className="relative">
-                <FaExchangeAlt className="text-lg md:text-xl" />
+            {/* DESKTOP SEARCH */}
+            <div className="mx-4 hidden max-w-2xl flex-1 overflow-hidden rounded-lg border border-green-500 lg:flex">
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+                placeholder="Search for items..."
+                className="min-w-0 flex-1 px-4 py-3 text-sm outline-none"
+                aria-label="Search products"
+              />
 
-                <span className="absolute -top-3 -right-3 w-5 h-5 rounded-full bg-green-500 text-white text-[10px] flex items-center justify-center">
-                  0
-                </span>
-              </div>
-
-              <span className="text-sm">Compare</span>
+              <button
+                type="button"
+                onClick={handleSearch}
+                className="shrink-0 bg-green-500 px-5 text-white transition hover:bg-green-600"
+                aria-label="Submit search"
+              >
+                <FaSearch />
+              </button>
             </div>
 
-            {/* WISHLIST */}
-            <div className="relative cursor-pointer flex items-center gap-2">
-              <div className="relative">
-                <FaHeart className="text-lg md:text-xl" />
-
-                <span className="absolute -top-3 -right-3 w-5 h-5 rounded-full bg-green-500 text-white text-[10px] flex items-center justify-center">
-                  0
+            {/* DESKTOP ACTIONS */}
+            <div className="hidden items-center gap-4 xl:gap-6 lg:flex">
+              <button
+                type="button"
+                className="relative flex cursor-pointer items-center gap-2"
+              >
+                <span className="relative">
+                  <FaExchangeAlt className="text-lg xl:text-xl" />
+                  <span className="absolute -right-3 -top-3 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-[10px] text-white">
+                    0
+                  </span>
                 </span>
-              </div>
+                <span className="hidden text-sm xl:inline">Compare</span>
+              </button>
 
-              <span className="text-sm">Wishlist</span>
+              <button
+                type="button"
+                className="relative flex cursor-pointer items-center gap-2"
+              >
+                <span className="relative">
+                  <FaHeart className="text-lg xl:text-xl" />
+                  <span className="absolute -right-3 -top-3 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-[10px] text-white">
+                    0
+                  </span>
+                </span>
+                <span className="hidden text-sm xl:inline">Wishlist</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleCart}
+                className="relative flex cursor-pointer items-center gap-2"
+              >
+                <span className="relative">
+                  <FaShoppingCart className="text-lg xl:text-xl" />
+                  <span className="absolute -right-3 -top-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-green-500 px-1 text-[10px] text-white">
+                    {cartCount}
+                  </span>
+                </span>
+                <span className="hidden text-sm xl:inline">Cart</span>
+              </button>
+
+              <div className="relative z-[70]" ref={accountRef}>
+                <button
+                  type="button"
+                  className="flex cursor-pointer items-center gap-2"
+                  onClick={() => setAccountMenu((previous) => !previous)}
+                  aria-expanded={accountMenu}
+                  aria-label="Open account menu"
+                >
+                  <FaUser className="text-lg xl:text-xl" />
+                  <span className="hidden text-sm xl:inline">Account</span>
+                </button>
+
+                {accountMenu && (
+                  <div className="absolute right-0 top-10 z-[80] w-48 rounded-xl border bg-white p-2 shadow-xl">
+                    <ul className="text-sm">
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => navigate("/dashboard/orders/")}
+                          className="w-full border-b border-gray-200 px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                        >
+                          My Order
+                        </button>
+                      </li>
+
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate("/dashboard/orders/track-all")
+                          }
+                          className="w-full border-b border-gray-200 px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                        >
+                          Order Tracking
+                        </button>
+                      </li>
+
+                      <li>
+                        <button
+                          type="button"
+                          className="w-full border-b border-gray-200 px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                        >
+                          My Voucher
+                        </button>
+                      </li>
+
+                      <li>
+                        <button
+                          type="button"
+                          className="w-full border-b border-gray-200 px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                        >
+                          My Wishlist
+                        </button>
+                      </li>
+
+                      <li>
+                        <button
+                          type="button"
+                          className="w-full border-b border-gray-200 px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                        >
+                          Settings
+                        </button>
+                      </li>
+
+                      <li>
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="w-full px-3 py-2 text-left transition hover:bg-red-50 hover:text-red-500"
+                        >
+                          Sign Out
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* CART */}
-            <div onClick={toggleCart} className="relative cursor-pointer flex items-center gap-2">
-              <div className="relative">
-                <FaShoppingCart className="text-lg md:text-xl" />
-
-                <span className="absolute -top-3 -right-3 w-5 h-5 rounded-full bg-green-500 text-white text-[10px] flex items-center justify-center">
+            {/* MOBILE/TABLET ACTIONS */}
+            <div className="flex items-center gap-4 lg:hidden">
+              <button
+                type="button"
+                onClick={toggleCart}
+                className="relative p-1"
+                aria-label="Open cart"
+              >
+                <FaShoppingCart className="text-xl" />
+                <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-green-500 px-1 text-[10px] text-white">
                   {cartCount}
                 </span>
-              </div>
+              </button>
 
-              <span className="text-sm">Cart</span>
-            </div>
-
-            <div className="relative z-9999" ref={accountRef}>
-              <div
-                className="cursor-pointer flex items-center gap-2"
-                onClick={() => setAccountMenu(!accountMenu)}
+              <button
+                type="button"
+                onClick={() => setMobileMenu(true)}
+                className="rounded-lg border p-2 text-xl transition hover:border-green-500 hover:text-green-500"
+                aria-label="Open navigation menu"
+                aria-expanded={mobileMenu}
               >
-                <FaUser className="text-lg md:text-xl" />
-                <span className="text-sm">Account</span>
-              </div>
+                <FaBars />
+              </button>
+            </div>
+          </div>
 
-              {/* DROPDOWN MENU */}
-              {accountMenu && (
-                <div className="absolute right-0 top-10 w-40 bg-white border shadow-xl rounded-xl p-2 z-50">
-                  <ul className="text-sm">
-                    <li onClick={() => navigate("/dashboard/orders/")}  className="px-3 py-2 border-b border-gray-300 hover:bg-green-100 hover:text-green-600 cursor-pointer transition">
-                      My Order
-                    </li>
+          {/* MOBILE/TABLET SEARCH */}
+          <div className="pt-3 lg:hidden">
+            <div className="flex overflow-hidden rounded-xl border-2 border-green-500">
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+                placeholder="Search products..."
+                className="min-w-0 flex-1 px-4 py-3 text-sm outline-none"
+                aria-label="Search products"
+              />
 
-                    <li onClick={() => navigate("/dashboard/orders/track-all")}  className="px-3 py-2 border-b border-gray-300 hover:bg-green-100 hover:text-green-600 cursor-pointer transition">
-                      Order Tracking
-                    </li>
+              <button
+                type="button"
+                onClick={handleSearch}
+                className="shrink-0 bg-green-500 px-5 text-white"
+                aria-label="Submit search"
+              >
+                <FaSearch />
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
 
-                    <li className="px-3 py-2 border-b border-gray-300 hover:bg-green-100 hover:text-green-600 cursor-pointer transition">
-                      My Voucher
-                    </li>
+      {/* DESKTOP NAVBAR */}
+      <div
+        className={`z-[60] hidden border-b bg-white transition-shadow duration-300 lg:block ${
+          stickyHeader ? "fixed left-0 top-0 w-full shadow-lg" : "relative"
+        }`}
+      >
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-5 px-6 2xl:px-12">
+          <nav className="flex min-w-0 items-center gap-5 text-[14px] font-medium xl:gap-7 xl:text-[15px]">
+            {/* CATEGORY */}
+            <div
+              className="relative shrink-0 py-3"
+              onMouseEnter={() => setShowCategory(true)}
+              onMouseLeave={() => setShowCategory(false)}
+            >
+              <button
+                type="button"
+                onClick={() => setShowCategory((previous) => !previous)}
+                className="flex items-center gap-3 rounded bg-green-500 px-4 py-2 text-white transition hover:bg-green-600 xl:px-5"
+                aria-expanded={showCategory}
+              >
+                <FaBars />
+                <span>Browse All Categories</span>
+              </button>
 
-                    <li className="px-3 py-2 border-b border-gray-300 hover:bg-green-100 hover:text-green-600 cursor-pointer transition">
-                      My Wishlist
-                    </li>
-
-                    <li className="px-3 py-2 border-b border-gray-300 hover:bg-green-100 hover:text-green-600 cursor-pointer transition">
-                      Settings
-                    </li>
-
-                    <li
-                      onClick={handleLogout}
-                      className="px-3 py-2 hover:bg-red-50 hover:text-red-500 cursor-pointer transition"
-                    >
-                      Sign Out
-                    </li>
+              {showCategory && (
+                <div className="absolute left-0 top-full z-[80] mt-1 w-[280px] rounded-2xl border border-t-4 border-gray-200 border-t-green-500 bg-white p-5 shadow-2xl">
+                  <ul className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                    {categories.length > 0 ? (
+                      categories.map((category) => (
+                        <li key={category.id ?? category.cid ?? category.title}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowCategory(false);
+                              navigate(`/category/${category.cid}`);
+                            }}
+                            className="flex w-full items-center gap-1 text-left transition hover:text-green-500"
+                          >
+                            {category.title}
+                          </button>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="text-sm text-gray-400">
+                        No categories found
+                      </li>
+                    )}
                   </ul>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* MOBILE MENU BUTTON */}
-          <button
-            onClick={() => setMobileMenu(!mobileMenu)}
-            className="md:hidden text-2xl"
-          >
-            {mobileMenu ? <FaTimes /> : <FaBars />}
-          </button>
-        </div>
-
-        {/* MOBILE SEARCH */}
-        <div className="md:hidden px-4 pb-4">
-          <div className="flex border-2 border-green-500 rounded-xl overflow-hidden">
-            <input
-              type="text"
-              placeholder="Search products..."
-              className="w-full px-4 py-3 outline-none text-sm"
-            />
-            <button className="bg-green-500 text-white px-5">
-              <FaSearch />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* NAVBAR */}
-      <div
-        className={`hidden lg:flex items-center justify-between border-b px-6 2xl:px-12 py-1 z-50 bg-white transition-all duration-300 ${
-          stickyHeader ? "fixed top-0 left-0 w-full shadow-lg" : "relative"
-        }`}
-      >
-        <div className="flex items-center gap-7 text-[15px] font-medium">
-          {/* CATEGORY */}
-          <div
-            className="relative"
-            onMouseEnter={() => setShowCategory(true)}
-            onMouseLeave={() => setShowCategory(false)}
-          >
-            <button className="bg-green-500 hover:bg-green-600 transition text-white px-5 py-2 rounded flex items-center gap-3">
-              <FaBars />
-              Browse All Categories
+            <button
+              type="button"
+              className="shrink-0 transition hover:text-green-500"
+            >
+              Deals
             </button>
 
-            {showCategory && (
-              <div className="absolute top-full left-0 mt-1 bg-white shadow-2xl rounded-2xl border border-gray-300 border-t-4 border-t-green-500 w-45 p-5 z-50 transition-all duration-300">
-                <ul className="space-y-3">
-                  {categories.map((category) => (
-                    <li
-                      key={category.id}
-                      onClick={() => navigate(`/category/${category.cid}`)}
-                      className="hover:text-green-500 cursor-pointer transition flex items-center gap-1"
+            {/* HOME */}
+            <div className="group relative shrink-0 py-5">
+              <button
+                type="button"
+                className="flex items-center gap-2 transition hover:text-green-500"
+              >
+                Home <FaChevronDown size={12} />
+              </button>
+
+              <div className="invisible absolute left-0 top-full z-[70] w-64 translate-y-2 rounded-2xl border bg-white p-5 opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                <ul className="space-y-4">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/")}
+                      className="transition hover:text-green-500"
                     >
-                      {category.title}
-                    </li>
-                  ))}
+                      Home Default
+                    </button>
+                  </li>
+
+                  <li>
+                    <button
+                      type="button"
+                      className="transition hover:text-green-500"
+                    >
+                      Home Modern
+                    </button>
+                  </li>
+
+                  <li>
+                    <button
+                      type="button"
+                      className="transition hover:text-green-500"
+                    >
+                      Organic Store
+                    </button>
+                  </li>
                 </ul>
               </div>
-            )}
-          </div>
+            </div>
 
-          <a href="#" className="hover:text-green-500 transition">
-            Deals
-          </a>
-
-          {/* HOME */}
-          <div className="relative group py-5">
-            <button className="flex items-center gap-2 hover:text-green-500 transition">
-              Home <FaChevronDown size={12} />
+            <button
+              type="button"
+              className="shrink-0 transition hover:text-green-500"
+            >
+              About
             </button>
 
-            <div className="absolute top-full left-0 hidden group-hover:block bg-white shadow-2xl rounded-2xl border w-64 p-5">
-              <ul className="space-y-4">
-                <li className="hover:text-green-500 cursor-pointer">
-                  Home Default
-                </li>
-
-                <li className="hover:text-green-500 cursor-pointer">
-                  Home Modern
-                </li>
-
-                <li className="hover:text-green-500 cursor-pointer">
-                  Organic Store
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <a href="#" className="hover:text-green-500 transition">
-            About
-          </a>
-
-          {/* SHOP */}
-          <div className="relative group py-5">
             <button
-              onClick={() => navigate(`/product-page/`)}
-              className="flex items-center gap-2 hover:text-green-500 transition"
+              type="button"
+              onClick={() => navigate("/product-page/")}
+              className="shrink-0 py-5 transition hover:text-green-500"
             >
               Shop
             </button>
-          </div>
 
-          {/* VENDORS */}
-          <div className="relative group py-5">
-            <button className="flex items-center gap-2 hover:text-green-500 transition">
-              Vendors <FaChevronDown size={12} />
-            </button>
+            {/* VENDORS */}
+            <div className="group relative shrink-0 py-5">
+              <button
+                type="button"
+                className="flex items-center gap-2 transition hover:text-green-500"
+              >
+                Vendors <FaChevronDown size={12} />
+              </button>
 
-            <div className="absolute top-full left-0 hidden group-hover:block bg-white shadow-2xl rounded-2xl border w-64 p-5 z-50">
-              <ul className="space-y-3 text-sm">
-                <li
-                  onClick={() => navigate("/vendors")}
-                  className="hover:text-green-500 cursor-pointer transition"
-                >
-                  Vendor List
-                </li>
-
-                <li
-                  onClick={() => navigate("/vendor-store")}
-                  className="hover:text-green-500 cursor-pointer transition"
-                >
-                  Vendor Store
-                </li>
-
-                <li
-                  onClick={() => navigate("/vendor-dashboard")}
-                  className="hover:text-green-500 cursor-pointer transition"
-                >
-                  Vendor Dashboard
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* MEGA MENU */}
-          <div className="relative group py-5">
-            <button className="flex items-center gap-2 hover:text-green-500 transition">
-              Mega menu <FaChevronDown size={12} />
-            </button>
-
-            <div className="absolute top-full -left-90 hidden group-hover:block z-999">
-              <div className="bg-white shadow-2xl rounded-3xl border p-8 w-225 max-w-[95vw]">
-                <div className="grid grid-cols-4 gap-8">
-                  {/* COL 1 */}
-                  <div>
-                    <h2 className="text-xl font-bold text-green-500 mb-5">
-                      Fruit & Vegetables
-                    </h2>
-
-                    <ul className="space-y-3 text-gray-600 text-sm">
-                      <li className="hover:text-green-500 cursor-pointer">
-                        Meat & Poultry
-                      </li>
-
-                      <li className="hover:text-green-500 cursor-pointer">
-                        Fresh Vegetables
-                      </li>
-
-                      <li className="hover:text-green-500 cursor-pointer">
-                        Herbs & Seasonings
-                      </li>
-
-                      <li className="hover:text-green-500 cursor-pointer">
-                        Cuts & Sprouts
-                      </li>
-
-                      <li className="hover:text-green-500 cursor-pointer">
-                        Exotic Fruits
-                      </li>
-
-                      <li className="hover:text-green-500 cursor-pointer">
-                        Packaged Produce
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* COL 2 */}
-                  <div>
-                    <h2 className="text-xl font-bold text-green-500 mb-5">
-                      Breakfast & Dairy
-                    </h2>
-
-                    <ul className="space-y-3 text-gray-600 text-sm">
-                      <li>Milk & Flavoured Milk</li>
-                      <li>Butter and Margarine</li>
-                      <li>Eggs Substitutes</li>
-                      <li>Marmalades</li>
-                      <li>Sour Cream</li>
-                      <li>Cheese</li>
-                    </ul>
-                  </div>
-
-                  {/* COL 3 */}
-                  <div>
-                    <h2 className="text-xl font-bold text-green-500 mb-5">
-                      Meat & Seafood
-                    </h2>
-
-                    <ul className="space-y-3 text-gray-600 text-sm">
-                      <li>Breakfast Sausage</li>
-                      <li>Dinner Sausage</li>
-                      <li>Chicken</li>
-                      <li>Sliced Deli Meat</li>
-                      <li>Wild Caught Fillets</li>
-                      <li>Crab and Shellfish</li>
-                    </ul>
-                  </div>
-
-                  {/* OFFER */}
-                  <div className="bg-[#f7ece9] rounded-3xl p-6 relative overflow-hidden min-h-82.5">
-                    <p className="uppercase text-gray-500 text-xs mb-2">
-                      Hot Deals
-                    </p>
-
-                    <h2 className="text-3xl font-bold leading-tight">
-                      Don't miss Trending
-                    </h2>
-
-                    <h3 className="text-green-500 font-bold text-3xl mt-2">
-                      Save to 50%
-                    </h3>
-
-                    <button className="mt-5 bg-green-500 hover:bg-green-600 transition text-white px-6 py-3 rounded-full">
-                      Shop now
+              <div className="invisible absolute left-0 top-full z-[70] w-64 translate-y-2 rounded-2xl border bg-white p-5 opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                <ul className="space-y-3 text-sm">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/vendors")}
+                      className="transition hover:text-green-500"
+                    >
+                      Vendor List
                     </button>
+                  </li>
 
-                    <div className="absolute top-5 right-5 bg-yellow-300 w-20 h-20 rounded-full flex flex-col items-center justify-center font-bold">
-                      <span className="text-2xl">25%</span>
-                      <span className="text-sm">off</span>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/vendor-store")}
+                      className="transition hover:text-green-500"
+                    >
+                      Vendor Store
+                    </button>
+                  </li>
+
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/vendor-dashboard")}
+                      className="transition hover:text-green-500"
+                    >
+                      Vendor Dashboard
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* MEGA MENU */}
+            <div className="group relative shrink-0 py-5">
+              <button
+                type="button"
+                className="flex items-center gap-2 transition hover:text-green-500"
+              >
+                Mega Menu <FaChevronDown size={12} />
+              </button>
+
+              <div className="invisible absolute left-1/2 top-full z-[75] -translate-x-1/2 translate-y-2 opacity-0 transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                <div className="w-[900px] max-w-[calc(100vw-3rem)] rounded-3xl border bg-white p-8 shadow-2xl">
+                  <div className="grid grid-cols-4 gap-8">
+                    <div>
+                      <h2 className="mb-5 text-xl font-bold text-green-500">
+                        Fruit &amp; Vegetables
+                      </h2>
+
+                      <ul className="space-y-3 text-sm text-gray-600">
+                        <li>Meat &amp; Poultry</li>
+                        <li>Fresh Vegetables</li>
+                        <li>Herbs &amp; Seasonings</li>
+                        <li>Cuts &amp; Sprouts</li>
+                        <li>Exotic Fruits</li>
+                        <li>Packaged Produce</li>
+                      </ul>
                     </div>
 
-                    <img
-                      src="https://i.imgur.com/TN2nC6v.png"
-                      alt="offer"
-                      className="absolute bottom-0 right-0 w-44"
-                    />
+                    <div>
+                      <h2 className="mb-5 text-xl font-bold text-green-500">
+                        Breakfast &amp; Dairy
+                      </h2>
+
+                      <ul className="space-y-3 text-sm text-gray-600">
+                        <li>Milk &amp; Flavoured Milk</li>
+                        <li>Butter and Margarine</li>
+                        <li>Eggs Substitutes</li>
+                        <li>Marmalades</li>
+                        <li>Sour Cream</li>
+                        <li>Cheese</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h2 className="mb-5 text-xl font-bold text-green-500">
+                        Meat &amp; Seafood
+                      </h2>
+
+                      <ul className="space-y-3 text-sm text-gray-600">
+                        <li>Breakfast Sausage</li>
+                        <li>Dinner Sausage</li>
+                        <li>Chicken</li>
+                        <li>Sliced Deli Meat</li>
+                        <li>Wild Caught Fillets</li>
+                        <li>Crab and Shellfish</li>
+                      </ul>
+                    </div>
+
+                    <div className="relative min-h-[330px] overflow-hidden rounded-3xl bg-[#f7ece9] p-6">
+                      <p className="mb-2 text-xs uppercase text-gray-500">
+                        Hot Deals
+                      </p>
+
+                      <h2 className="text-3xl font-bold leading-tight">
+                        Don&apos;t miss Trending
+                      </h2>
+
+                      <h3 className="mt-2 text-3xl font-bold text-green-500">
+                        Save to 50%
+                      </h3>
+
+                      <button
+                        type="button"
+                        className="relative z-10 mt-5 rounded-full bg-green-500 px-6 py-3 text-white transition hover:bg-green-600"
+                      >
+                        Shop now
+                      </button>
+
+                      <div className="absolute right-5 top-5 flex h-20 w-20 flex-col items-center justify-center rounded-full bg-yellow-300 font-bold">
+                        <span className="text-2xl">25%</span>
+                        <span className="text-sm">off</span>
+                      </div>
+
+                      <img
+                        src="https://i.imgur.com/TN2nC6v.png"
+                        alt="Special grocery offer"
+                        className="absolute bottom-0 right-0 w-44 max-w-[70%]"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-          <a href="#" className="hover:text-green-500 transition">
-            Blog
-          </a>
 
-          <a href="#" className="hover:text-green-500 transition">
-            Pages
-          </a>
+            <button
+              type="button"
+              className="shrink-0 transition hover:text-green-500"
+            >
+              Blog
+            </button>
 
-          <a href="#" className="hover:text-green-500 transition">
-            Contact
-          </a>
-        </div>
+            <button
+              type="button"
+              className="shrink-0 transition hover:text-green-500"
+            >
+              Pages
+            </button>
 
-        {/* SUPPORT */}
-        <div className="hidden xl:flex items-center gap-3">
-          <FaPhoneAlt className="text-green-500 text-2xl" />
+            <button
+              type="button"
+              className="shrink-0 transition hover:text-green-500"
+            >
+              Contact
+            </button>
+          </nav>
 
-          <div>
-            <h2 className="text-green-500 text-xl font-bold">1900 - 888</h2>
-            <p className="text-sm text-gray-500">24/7 Support Center</p>
+          {/* SUPPORT */}
+          <div className="hidden shrink-0 items-center gap-3 2xl:flex">
+            <FaPhoneAlt className="text-2xl text-green-500" />
+
+            <div>
+              <h2 className="text-xl font-bold text-green-500">1900 - 888</h2>
+              <p className="text-sm text-gray-500">24/7 Support Center</p>
+            </div>
           </div>
         </div>
       </div>
-      {stickyHeader && <div className="h-15"></div>}
 
-      {/* MOBILE MENU */}
+      {stickyHeader && <div className="hidden h-[65px] lg:block" />}
+
+      {/* MOBILE/TABLET DRAWER */}
       {mobileMenu && (
-        <div className="lg:hidden border-b px-4 py-5 bg-white">
-          <div className="flex flex-col gap-4 font-medium">
-            <p>Home</p>
-            <p>About</p>
-            <p>Shop</p>
-            <p>Vendors</p>
-            <p>Mega Menu</p>
-            <p>Blog</p>
-            <p>Pages</p>
-            <p>Contact</p>
-          </div>
+        <div
+          className="fixed inset-0 z-[100] bg-black/45 lg:hidden"
+          onClick={closeMobileMenu}
+          role="presentation"
+        >
+          <aside
+            className="ml-auto h-full w-[88vw] max-w-[420px] overflow-y-auto bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Mobile navigation"
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-4">
+              <button
+                type="button"
+                onClick={() => goToPage("/")}
+                className="flex items-center"
+                aria-label="Go to home page"
+              >
+                <img
+                  src={logo}
+                  alt="Nest logo"
+                  className="h-10 w-auto max-w-[140px] object-contain"
+                />
+              </button>
+
+              <button
+                type="button"
+                onClick={closeMobileMenu}
+                className="rounded-lg border p-2 text-xl transition hover:border-red-400 hover:text-red-500"
+                aria-label="Close navigation menu"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="px-4 py-5">
+              <nav className="space-y-1 font-medium">
+                {/* MOBILE CATEGORIES */}
+                <div className="border-b">
+                  <button
+                    type="button"
+                    onClick={() => toggleMobileSection("categories")}
+                    className="flex w-full items-center justify-between py-3 text-left"
+                    aria-expanded={mobileSections.categories}
+                  >
+                    <span className="flex items-center gap-3">
+                      <FaBars className="text-green-500" />
+                      Browse All Categories
+                    </span>
+
+                    <FaChevronDown
+                      size={13}
+                      className={`transition-transform ${
+                        mobileSections.categories ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {mobileSections.categories && (
+                    <div className="pb-3 pl-8">
+                      <ul className="max-h-64 space-y-1 overflow-y-auto rounded-lg bg-gray-50 p-2 text-sm">
+                        {categories.length > 0 ? (
+                          categories.map((category) => (
+                            <li
+                              key={
+                                category.id ?? category.cid ?? category.title
+                              }
+                            >
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  goToPage(`/category/${category.cid}`)
+                                }
+                                className="w-full rounded px-3 py-2 text-left transition hover:bg-green-100 hover:text-green-600"
+                              >
+                                {category.title}
+                              </button>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="px-3 py-2 text-gray-400">
+                            No categories found
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="w-full border-b py-3 text-left transition hover:text-green-500"
+                >
+                  Deals
+                </button>
+
+                {/* MOBILE HOME */}
+                <div className="border-b">
+                  <button
+                    type="button"
+                    onClick={() => toggleMobileSection("home")}
+                    className="flex w-full items-center justify-between py-3 text-left"
+                    aria-expanded={mobileSections.home}
+                  >
+                    <span>Home</span>
+
+                    <FaChevronDown
+                      size={13}
+                      className={`transition-transform ${
+                        mobileSections.home ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {mobileSections.home && (
+                    <ul className="space-y-1 pb-3 pl-4 text-sm text-gray-600">
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => goToPage("/")}
+                          className="w-full rounded px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                        >
+                          Home Default
+                        </button>
+                      </li>
+
+                      <li>
+                        <button
+                          type="button"
+                          className="w-full rounded px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                        >
+                          Home Modern
+                        </button>
+                      </li>
+
+                      <li>
+                        <button
+                          type="button"
+                          className="w-full rounded px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                        >
+                          Organic Store
+                        </button>
+                      </li>
+                    </ul>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="w-full border-b py-3 text-left transition hover:text-green-500"
+                >
+                  About
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => goToPage("/product-page/")}
+                  className="w-full border-b py-3 text-left transition hover:text-green-500"
+                >
+                  Shop
+                </button>
+
+                {/* MOBILE VENDORS */}
+                <div className="border-b">
+                  <button
+                    type="button"
+                    onClick={() => toggleMobileSection("vendors")}
+                    className="flex w-full items-center justify-between py-3 text-left"
+                    aria-expanded={mobileSections.vendors}
+                  >
+                    <span>Vendors</span>
+
+                    <FaChevronDown
+                      size={13}
+                      className={`transition-transform ${
+                        mobileSections.vendors ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {mobileSections.vendors && (
+                    <ul className="space-y-1 pb-3 pl-4 text-sm text-gray-600">
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => goToPage("/vendors")}
+                          className="w-full rounded px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                        >
+                          Vendor List
+                        </button>
+                      </li>
+
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => goToPage("/vendor-store")}
+                          className="w-full rounded px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                        >
+                          Vendor Store
+                        </button>
+                      </li>
+
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => goToPage("/vendor-dashboard")}
+                          className="w-full rounded px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                        >
+                          Vendor Dashboard
+                        </button>
+                      </li>
+                    </ul>
+                  )}
+                </div>
+
+                {/* MOBILE MEGA MENU */}
+                <div className="border-b">
+                  <button
+                    type="button"
+                    onClick={() => toggleMobileSection("megaMenu")}
+                    className="flex w-full items-center justify-between py-3 text-left"
+                    aria-expanded={mobileSections.megaMenu}
+                  >
+                    <span>Mega Menu</span>
+
+                    <FaChevronDown
+                      size={13}
+                      className={`transition-transform ${
+                        mobileSections.megaMenu ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {mobileSections.megaMenu && (
+                    <div className="space-y-5 pb-4 pl-2 text-sm">
+                      <div className="rounded-xl bg-gray-50 p-4">
+                        <h3 className="mb-3 font-bold text-green-500">
+                          Fruit &amp; Vegetables
+                        </h3>
+                        <ul className="grid grid-cols-1 gap-2 text-gray-600 min-[380px]:grid-cols-2">
+                          <li>Meat &amp; Poultry</li>
+                          <li>Fresh Vegetables</li>
+                          <li>Herbs &amp; Seasonings</li>
+                          <li>Cuts &amp; Sprouts</li>
+                          <li>Exotic Fruits</li>
+                          <li>Packaged Produce</li>
+                        </ul>
+                      </div>
+
+                      <div className="rounded-xl bg-gray-50 p-4">
+                        <h3 className="mb-3 font-bold text-green-500">
+                          Breakfast &amp; Dairy
+                        </h3>
+                        <ul className="grid grid-cols-1 gap-2 text-gray-600 min-[380px]:grid-cols-2">
+                          <li>Milk &amp; Flavoured Milk</li>
+                          <li>Butter and Margarine</li>
+                          <li>Eggs Substitutes</li>
+                          <li>Marmalades</li>
+                          <li>Sour Cream</li>
+                          <li>Cheese</li>
+                        </ul>
+                      </div>
+
+                      <div className="rounded-xl bg-gray-50 p-4">
+                        <h3 className="mb-3 font-bold text-green-500">
+                          Meat &amp; Seafood
+                        </h3>
+                        <ul className="grid grid-cols-1 gap-2 text-gray-600 min-[380px]:grid-cols-2">
+                          <li>Breakfast Sausage</li>
+                          <li>Dinner Sausage</li>
+                          <li>Chicken</li>
+                          <li>Sliced Deli Meat</li>
+                          <li>Wild Caught Fillets</li>
+                          <li>Crab and Shellfish</li>
+                        </ul>
+                      </div>
+
+                      <div className="rounded-xl bg-[#f7ece9] p-4">
+                        <p className="text-xs uppercase text-gray-500">
+                          Hot Deals
+                        </p>
+                        <h3 className="mt-1 text-lg font-bold">
+                          Don&apos;t miss Trending
+                        </h3>
+                        <p className="mt-1 text-xl font-bold text-green-500">
+                          Save to 50%
+                        </p>
+                        <button
+                          type="button"
+                          className="mt-3 rounded-full bg-green-500 px-5 py-2 text-white"
+                        >
+                          Shop now
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="w-full border-b py-3 text-left transition hover:text-green-500"
+                >
+                  Blog
+                </button>
+
+                <button
+                  type="button"
+                  className="w-full border-b py-3 text-left transition hover:text-green-500"
+                >
+                  Pages
+                </button>
+
+                <button
+                  type="button"
+                  className="w-full border-b py-3 text-left transition hover:text-green-500"
+                >
+                  Contact
+                </button>
+              </nav>
+
+              {/* MOBILE QUICK ACTIONS */}
+              <div className="mt-6">
+                <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-400">
+                  Quick actions
+                </h3>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-xs transition hover:border-green-500 hover:text-green-500"
+                  >
+                    <FaExchangeAlt className="text-lg" />
+                    Compare
+                  </button>
+
+                  <button
+                    type="button"
+                    className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-xs transition hover:border-green-500 hover:text-green-500"
+                  >
+                    <FaHeart className="text-lg" />
+                    Wishlist
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeMobileMenu();
+                      toggleCart();
+                    }}
+                    className="relative flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-xs transition hover:border-green-500 hover:text-green-500"
+                  >
+                    <span className="relative">
+                      <FaShoppingCart className="text-lg" />
+                      <span className="absolute -right-3 -top-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-green-500 px-1 text-[10px] text-white">
+                        {cartCount}
+                      </span>
+                    </span>
+                    Cart
+                  </button>
+                </div>
+              </div>
+
+              {/* MOBILE ACCOUNT */}
+              <div className="mt-5 rounded-xl border">
+                <button
+                  type="button"
+                  onClick={() => toggleMobileSection("account")}
+                  className="flex w-full items-center justify-between px-4 py-3 text-left font-medium"
+                  aria-expanded={mobileSections.account}
+                >
+                  <span className="flex items-center gap-3">
+                    <FaUser className="text-green-500" />
+                    My Account
+                  </span>
+
+                  <FaChevronDown
+                    size={13}
+                    className={`transition-transform ${
+                      mobileSections.account ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {mobileSections.account && (
+                  <ul className="border-t p-2 text-sm">
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => goToPage("/dashboard/orders/")}
+                        className="w-full rounded px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                      >
+                        My Order
+                      </button>
+                    </li>
+
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          goToPage("/dashboard/orders/track-all")
+                        }
+                        className="w-full rounded px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                      >
+                        Order Tracking
+                      </button>
+                    </li>
+
+                    <li>
+                      <button
+                        type="button"
+                        className="w-full rounded px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                      >
+                        My Voucher
+                      </button>
+                    </li>
+
+                    <li>
+                      <button
+                        type="button"
+                        className="w-full rounded px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                      >
+                        My Wishlist
+                      </button>
+                    </li>
+
+                    <li>
+                      <button
+                        type="button"
+                        className="w-full rounded px-3 py-2 text-left transition hover:bg-green-50 hover:text-green-600"
+                      >
+                        Settings
+                      </button>
+                    </li>
+
+                    <li>
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="w-full rounded px-3 py-2 text-left transition hover:bg-red-50 hover:text-red-500"
+                      >
+                        Sign Out
+                      </button>
+                    </li>
+                  </ul>
+                )}
+              </div>
+
+              {/* MOBILE SUPPORT/UTILITY */}
+              <div className="mt-6 rounded-xl bg-green-50 p-4">
+                <div className="flex items-center gap-3">
+                  <FaPhoneAlt className="text-2xl text-green-500" />
+                  <div>
+                    <h3 className="font-bold text-green-600">1900 - 888</h3>
+                    <p className="text-xs text-gray-500">24/7 Support Center</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="rounded-full bg-white px-3 py-2"
+                  >
+                    English
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full bg-white px-3 py-2"
+                  >
+                    USD
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goToPage("/dashboard/orders/track-all")}
+                    className="rounded-full bg-white px-3 py-2"
+                  >
+                    Track Order
+                  </button>
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
       )}
 
-      {children}
+      <main className="min-w-0">{children}</main>
 
       {/* FOOTER */}
-      <footer className="border-t mt-10">
-        <div className="px-4 md:px-6 2xl:px-12 py-12">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-10">
+      <footer className="mt-10 border-t">
+        <div className="mx-auto max-w-[1600px] px-4 py-10 sm:px-5 md:px-6 md:py-12 2xl:px-12">
+          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
             {/* COMPANY INFO */}
-            <div className="sm:col-span-2 xl:col-span-1">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white text-2xl font-bold">
+            <div className="sm:col-span-2 lg:col-span-1">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-500 text-2xl font-bold text-white">
                   N
                 </div>
 
                 <div>
                   <h1 className="text-3xl font-bold text-green-500">Nest</h1>
-
-                  <p className="text-[10px] tracking-[3px]">MART & GROCERY</p>
+                  <p className="text-[10px] tracking-[3px]">MART &amp; GROCERY</p>
                 </div>
               </div>
 
-              <p className="text-gray-600 leading-7">
+              <p className="leading-7 text-gray-600">
                 Awesome grocery store website template
               </p>
 
-              <div className="space-y-3 text-sm text-gray-600 mt-6">
+              <div className="mt-6 space-y-3 break-words text-sm text-gray-600">
                 <p>
-                  <span className="font-semibold">Address:</span> 5171 W
-                  Campbell Ave Kent, Utah
+                  <span className="font-semibold">Address:</span> 5171 W Campbell
+                  Ave Kent, Utah
                 </p>
 
                 <p>
-                  <span className="font-semibold">Call:</span>
+                  <span className="font-semibold">Call:</span>{" "}
                   (+91)-540-025-124553
                 </p>
 
@@ -584,27 +1253,25 @@ const PublicLayout = ({ children }) => {
                 </p>
               </div>
 
-              {/* APP */}
               <div className="mt-8">
-                <h2 className="text-xl font-bold mb-4">Install App</h2>
+                <h2 className="mb-4 text-xl font-bold">Install App</h2>
 
                 <div className="flex flex-wrap gap-3">
                   <img
                     src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
-                    alt="app"
-                    className="w-32"
+                    alt="Download on the App Store"
+                    className="h-auto w-32 max-w-full"
                   />
 
                   <img
                     src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
-                    alt="playstore"
-                    className="w-32"
+                    alt="Get it on Google Play"
+                    className="h-auto w-32 max-w-full"
                   />
                 </div>
 
-                {/* PAYMENT */}
                 <div className="mt-8">
-                  <h3 className="font-bold mb-4">Secured Payment Gateways</h3>
+                  <h3 className="mb-4 font-bold">Secured Payment Gateways</h3>
 
                   <div className="flex flex-wrap gap-3">
                     {[
@@ -612,12 +1279,12 @@ const PublicLayout = ({ children }) => {
                       "https://cdn-icons-png.flaticon.com/512/196/196561.png",
                       "https://cdn-icons-png.flaticon.com/512/349/349221.png",
                       "https://cdn-icons-png.flaticon.com/512/825/825454.png",
-                    ].map((img, index) => (
+                    ].map((image, index) => (
                       <img
-                        key={index}
-                        src={img}
-                        alt="payment"
-                        className="w-12"
+                        key={image}
+                        src={image}
+                        alt={`Payment method ${index + 1}`}
+                        className="h-auto w-12"
                       />
                     ))}
                   </div>
@@ -625,7 +1292,6 @@ const PublicLayout = ({ children }) => {
               </div>
             </div>
 
-            {/* FOOTER MENUS */}
             {[
               {
                 title: "Company",
@@ -675,17 +1341,21 @@ const PublicLayout = ({ children }) => {
                   "Cheese",
                 ],
               },
-            ].map((section, index) => (
-              <div key={index}>
-                <h2 className="text-2xl font-bold mb-6">{section.title}</h2>
+            ].map((section) => (
+              <div key={section.title}>
+                <h2 className="mb-5 text-xl font-bold md:text-2xl">
+                  {section.title}
+                </h2>
 
-                <ul className="space-y-4 text-gray-600">
-                  {section.items.map((item, i) => (
-                    <li
-                      key={i}
-                      className="hover:text-green-500 cursor-pointer transition"
-                    >
-                      {item}
+                <ul className="space-y-3 text-sm text-gray-600 md:space-y-4 md:text-base">
+                  {section.items.map((item) => (
+                    <li key={item}>
+                      <button
+                        type="button"
+                        className="text-left transition hover:text-green-500"
+                      >
+                        {item}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -694,32 +1364,30 @@ const PublicLayout = ({ children }) => {
           </div>
 
           {/* BOTTOM FOOTER */}
-          <div className="border-t mt-12 pt-6 flex flex-col xl:flex-row items-center justify-between gap-6">
-            <p className="text-gray-500 text-center xl:text-left text-sm">
+          <div className="mt-12 flex flex-col items-center justify-between gap-6 border-t pt-6 xl:flex-row">
+            <p className="text-center text-sm text-gray-500 xl:text-left">
               © 2025 Nest - Grocery Store React Template. All rights reserved
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="flex w-full flex-col items-center justify-center gap-4 sm:w-auto sm:flex-row sm:gap-6">
               <div className="flex items-center gap-3">
-                <FaPhoneAlt className="text-green-500 text-2xl" />
+                <FaPhoneAlt className="shrink-0 text-2xl text-green-500" />
 
                 <div>
-                  <h2 className="text-green-500 font-bold text-lg">
+                  <h2 className="text-lg font-bold text-green-500">
                     1900 - 6666
                   </h2>
-
                   <p className="text-sm text-gray-500">Working 8:00 - 22:00</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <FaPhoneAlt className="text-green-500 text-2xl" />
+                <FaPhoneAlt className="shrink-0 text-2xl text-green-500" />
 
                 <div>
-                  <h2 className="text-green-500 font-bold text-lg">
+                  <h2 className="text-lg font-bold text-green-500">
                     1900 - 8888
                   </h2>
-
                   <p className="text-sm text-gray-500">24/7 Support Center</p>
                 </div>
               </div>
